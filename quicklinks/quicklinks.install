@@ -1,0 +1,54 @@
+<?php
+function quicklinks_schema() {
+
+  $schema['quicklinks_groups'] = array(
+    'description' => t('The table containing groups for the quicklinks module.'),
+    'fields' => array(
+      'quicklinks_gid' => array(
+        'description' => t('Primary Key ID'),
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'quicklinks_gtitle' => array(
+        'description' => t('Title for display'),
+        'type' => 'varchar',
+        'length' => 64,
+      ),
+    ),
+    'primary key' => array( 'quicklinks_gid' ),
+  );
+
+  $schema['quicklinks_links'] = array(
+    'description' => t('The table containing links from the quicklinks module.'),
+    'fields' => array(
+      'quicklinks_id' => array(
+        'description' => t('Primary Key ID'),
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'quicklinks_title' => array(
+        'description' => t('Title for display'),
+        'type' => 'varchar',
+        'length' => 64,
+      ),
+      'quicklinks_url' => array(
+        'description' => t('URL of link'),
+        'type' => 'varchar',
+        'length' => 255
+      ),
+      'quicklinks_order' => array(
+        'description' => t('Lower numbers appear first'),
+        'type' => 'int'
+      ),
+      'quicklinks_gid' => array(
+        'description' => t('Which group is this link in'),
+        'type' => 'int',
+      ),
+    ),
+    'primary key' => array( 'quicklinks_id' ),
+  );
+
+  return $schema;
+}  
