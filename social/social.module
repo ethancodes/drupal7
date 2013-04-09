@@ -1,0 +1,172 @@
+<?php
+
+/**
+ * @file
+ * SOCIAL module
+ *
+ * Dirt simple icons/links for social networks. Block for footer.
+ */
+
+/**
+ * hook_perm
+ * - manage social links
+ */
+function social_permission() {
+	return array(
+		'manage social links' => array('title' => 'This user can manage social networks'),
+	);
+}
+
+/**
+ * hook_menu
+ */
+function social_menu() {
+    $items = array();
+
+    $items['admin/config/social'] = array(
+        'title' => 'Manage social networks',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('social_list'),
+        'access callback' => 'user_access',
+        'access arguments' => array('manage social links'),
+        'type' => MENU_NORMAL_ITEM
+    );    
+
+    return $items;
+}
+
+
+/**
+ * What networks do we support?
+ */
+function social_networks() {
+    $networks = array();
+
+    global $base_url;
+
+    // FACEBOOK
+    $n = array(
+        'name' => 'Facebook',
+        'abbr' => 'fb',
+        'icon' => $base_url . '/' . drupal_get_path('module', 'social') . '/icons/Facebook.png'
+    );
+    $networks['facebook'] = $n;
+
+    // TWITTER
+    $n = array(
+        'name' => 'Twitter',
+        'abbr' => 'tw',
+        'icon' => $base_url . '/' . drupal_get_path('module', 'social') . '/icons/Twitter.png'
+    );
+    $networks['twitter'] = $n;
+
+    // YOUTUBE
+    $n = array(
+        'name' => 'YouTube',
+        'abbr' => 'fb',
+        'icon' => $base_url . '/' . drupal_get_path('module', 'social') . '/icons/YouTube.png'
+    );
+    $networks['youtube'] = $n;
+
+    return $networks;
+    return array(
+        'facebook' => array(
+        )
+    );
+}
+
+/**
+ * List social networks
+ */
+function social_list() {
+    $form = array();
+
+    $networks = social_networks();
+    foreach ($networks as $ntitle => $ninfo) {
+        $form[$ntitle] = array(
+            '#type' => 'fieldset',
+            '#title' => $ninfo['name']
+        );
+        $form[$ntitle][$ntitle . '_icon'] = array(
+            '#markup' => '<img src="' . $ninfo['icon'] . '" alt="' . $ninfo['name'] . '" width="32" height="32" />',
+            '#prefix' => '<div class="form-item" style="float: left; margin: 5px 10px;">',
+            '#suffix' => '</div>'
+        );
+        $form[$ntitle][$ntitle . '_url'] = array(
+            '#type' => 'textfield',
+            '#title' => 'URL',
+            '#default_value' => variable_get('social_' . $ntitle . '_url', 'http://'),
+        );
+    }
+
+
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => 'Save'
+    );
+
+
+    return $form;
+}
+
+
+/**
+ * hook_submit
+ * Updating URLs
+ */
+function social_list_submit($form, &$form_state) {
+
+    $networks = social_networks();
+    foreach ($networks as $ntitle => $ninfo) {
+        $url = $form_state['values'][$ntitle . '_url'];
+        variable_set('social_' . $ntitle . '_url', $url);
+    }
+    drupal_set_message('Social networks updated!');
+
+}
+
+
+/**
+ * Implements hook_block_info().
+ */
+function social_block_info() {
+  $blocks['social'] = array(
+    'info' => t('Social Networks'),
+    'cache' => DRUPAL_CACHE_PER_ROLE,
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ *
+ * Prepares the contents of the block.
+ */
+function social_block_view($delta = '') {
+    switch ($delta) {
+        case 'social':
+#      $block['subject'] = t('Current posts');
+
+            $items = array();
+
+            $networks = social_networks();
+            foreach ($networks as $ntitle => $ninfo) {
+                $url = variable_get('social_' . $ntitle . '_url', 'http://');
+                if ($url == 'http://' || $url == '') continue;
+
+                $o  = '<a class="social_link" href="' . $url . '">';
+                $o .= '<img src="' . $ninfo['icon'] . '" alt="' . $ninfo['name'] . '" width="32" height="32" />';
+                $o .= '</a>';
+                $items[] = $o;
+            }
+
+            $block['content'] = theme('item_list', array('items' => $items));
+
+            break;
+
+
+    } // end switch
+
+    return $block;
+}
+
