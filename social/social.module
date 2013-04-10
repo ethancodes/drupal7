@@ -24,13 +24,24 @@ function social_menu() {
     $items = array();
 
     $items['admin/config/social'] = array(
+        'title' => 'Social',
+        'description' => 'Social networks.',
+        'position' => 'right',
+        'weight' => 0,
+        'page callback' => 'system_admin_menu_block_page',
+        'access arguments' => array('manage social links'),
+        'file' => 'system.admin.inc',
+        'file path' => drupal_get_path('module', 'system'),
+    );
+
+    $items['admin/config/social/networks'] = array(
         'title' => 'Manage social networks',
         'page callback' => 'drupal_get_form',
         'page arguments' => array('social_list'),
         'access callback' => 'user_access',
         'access arguments' => array('manage social links'),
         'type' => MENU_NORMAL_ITEM
-    );    
+    );
 
     return $items;
 }
@@ -38,6 +49,10 @@ function social_menu() {
 
 /**
  * What networks do we support?
+ *
+ * You can add whatever you like here. The form (and block) will update automatically.
+ * The only thing worth noting is that the $networks key should be websafe and one word.
+ * Such as "googleplus" not "Google+" or "Google Plus"
  */
 function social_networks() {
     $networks = array();
@@ -48,7 +63,6 @@ function social_networks() {
     $n = array(
         'name' => 'Facebook',
         'abbr' => 'fb',
-        'icon' => $base_url . '/' . drupal_get_path('module', 'social') . '/icons/Facebook.png'
     );
     $networks['facebook'] = $n;
 
@@ -56,7 +70,6 @@ function social_networks() {
     $n = array(
         'name' => 'Twitter',
         'abbr' => 'tw',
-        'icon' => $base_url . '/' . drupal_get_path('module', 'social') . '/icons/Twitter.png'
     );
     $networks['twitter'] = $n;
 
@@ -64,15 +77,10 @@ function social_networks() {
     $n = array(
         'name' => 'YouTube',
         'abbr' => 'fb',
-        'icon' => $base_url . '/' . drupal_get_path('module', 'social') . '/icons/YouTube.png'
     );
     $networks['youtube'] = $n;
 
     return $networks;
-    return array(
-        'facebook' => array(
-        )
-    );
 }
 
 /**
@@ -81,6 +89,10 @@ function social_networks() {
 function social_list() {
     $form = array();
 
+    global $base_url;
+    $icon_path = variable_get('social_icon_path', $base_url . '/' . drupal_get_path('module', 'social') . '/icons/');
+    $icon_size = variable_get('social_icon_size', 32);
+
     $networks = social_networks();
     foreach ($networks as $ntitle => $ninfo) {
         $form[$ntitle] = array(
@@ -88,7 +100,7 @@ function social_list() {
             '#title' => $ninfo['name']
         );
         $form[$ntitle][$ntitle . '_icon'] = array(
-            '#markup' => '<img src="' . $ninfo['icon'] . '" alt="' . $ninfo['name'] . '" width="32" height="32" />',
+            '#markup' => '<img src="' . $icon_path . $ntitle . '.png" alt="' . $ninfo['name'] . '" width="' . $icon_size . '" height="' . $icon_size . '" />',
             '#prefix' => '<div class="form-item" style="float: left; margin: 5px 10px;">',
             '#suffix' => '</div>'
         );
@@ -96,9 +108,23 @@ function social_list() {
             '#type' => 'textfield',
             '#title' => 'URL',
             '#default_value' => variable_get('social_' . $ntitle . '_url', 'http://'),
+            '#description' => 'If you leave this empty, no icon will be displayed.'
         );
     }
 
+    $form['icon_path'] = array(
+        '#type' => 'textfield',
+        '#title' => 'Icon path',
+        '#default_value' => variable_get('social_icon_path', $base_url . '/' . drupal_get_path('module', 'social') . '/icons/'),
+        '#description' => 'If you want to override the default icons.'
+    );
+
+    $form['icon_size'] = array(
+        '#type' => 'textfield',
+        '#title' => 'Icon size',
+        '#default_value' => variable_get('social_icon_size', 32),
+        '#description' => 'Number of pixels for both height and width'
+    );
 
     $form['submit'] = array(
         '#type' => 'submit',
@@ -121,6 +147,16 @@ function social_list_submit($form, &$form_state) {
         $url = $form_state['values'][$ntitle . '_url'];
         variable_set('social_' . $ntitle . '_url', $url);
     }
+
+    global $base_url;
+    $icon_path = trim(strip_tags($form_state['values']['icon_path']));
+    if ($icon_path == '') $icon_path = $base_url . '/' . drupal_get_path('module', 'social') . '/icons/';
+    variable_set('social_icon_path', $icon_path);
+
+    $icon_size = (int)trim(strip_tags($form_state['values']['icon_size']));
+    if ($icon_size == 0) $icon_size = 32;
+    variable_set('social_icon_size', $icon_size);
+
     drupal_set_message('Social networks updated!');
 
 }
@@ -143,29 +179,29 @@ function social_block_info() {
  * Prepares the contents of the block.
  */
 function social_block_view($delta = '') {
-    switch ($delta) {
-        case 'social':
-#      $block['subject'] = t('Current posts');
+    if ($delta =='social') {
 
-            $items = array();
+        global $base_url;
+        
+        $icon_path = variable_get('social_icon_path', $base_url . '/' . drupal_get_path('module', 'social') . '/icons/');
+        $icon_size = variable_get('social_icon_size', 32);
 
-            $networks = social_networks();
-            foreach ($networks as $ntitle => $ninfo) {
-                $url = variable_get('social_' . $ntitle . '_url', 'http://');
-                if ($url == 'http://' || $url == '') continue;
+        $items = array();
 
-                $o  = '<a class="social_link" href="' . $url . '">';
-                $o .= '<img src="' . $ninfo['icon'] . '" alt="' . $ninfo['name'] . '" width="32" height="32" />';
-                $o .= '</a>';
-                $items[] = $o;
-            }
+        $networks = social_networks();
+        foreach ($networks as $ntitle => $ninfo) {
+            $url = variable_get('social_' . $ntitle . '_url', 'http://');
+            if ($url == 'http://' || $url == '') continue;
 
-            $block['content'] = theme('item_list', array('items' => $items));
+            $o  = '<a class="social_link" href="' . $url . '">';
+            $o .= '<img src="' . $icon_path . $ntitle . '.png" alt="' . $ninfo['name'] . '" width="' . $icon_size . '" height="' . $icon_size . '" />';
+            $o .= '</a>';
+            $items[] = $o;
+        }
 
-            break;
+        if (count($items) > 0) $block['content'] = theme('item_list', array('items' => $items));
 
-
-    } // end switch
+    } // end if
 
     return $block;
 }

@@ -1,4 +1,4 @@
 name = Social
 description = Dirt simple icons/links for social networks. Block for footer.
 core = 7.x
-configure = admin/config/social
+configure = admin/config/social/networks
