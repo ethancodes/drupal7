@@ -38,6 +38,12 @@ function quicklinks_schema() {
         'type' => 'varchar',
         'length' => 255
       ),
+      'quicklinks_window' => array(
+        'description' => t('Open in a new window'),
+        'type' => 'int',
+        'size' => 'tiny',
+        'default' => 0
+      ),
       'quicklinks_order' => array(
         'description' => t('Lower numbers appear first'),
         'type' => 'int'

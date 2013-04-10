@@ -5,6 +5,8 @@
  * QUICKLINKS module
  *
  * Allows users to create groups of links, displayed by a block.
+ * Creates a block for each group, automatically.
+ * If you don't like the auto-blocks, see quicklinks_render_links()
  */
 
 /**
@@ -29,28 +31,38 @@ function quicklinks_permission() {
 function quicklinks_menu() {
     $items = array();
 
-    $items['quicklinks'] = array(
+    $items['admin/structure/quicklinks'] = array(
+        'title' => 'Quicklinks',
+        'description' => 'Groups of links.',
+        'weight' => 100,
+        'page callback' => 'system_admin_menu_block_page',
+        'access arguments' => array('can create links'),
+        'file' => 'system.admin.inc',
+        'file path' => drupal_get_path('module', 'system'),
+    );
+
+    $items['admin/structure/quicklinks/list'] = array(
         'title' => 'List quicklinks by group',
         'page callback' => 'drupal_get_form',
         'page arguments' => array('quicklinks_list'),
         'access callback' => 'user_access',
         'access arguments' => array('can create links'),
-        'type' => MENU_CALLBACK
+        'type' => MENU_NORMAL_ITEM
     );    
 
-    $items['quicklinks/edit/group/%quicklinks_value'] = array(
+    $items['admin/structure/quicklinks/edit/group/%quicklinks_value'] = array(
         'title' => 'Edit quicklink group',
         'page callback' => 'drupal_get_form',
-        'page arguments' => array('quicklinks_group_edit', 3),
+        'page arguments' => array('quicklinks_group_edit', 5),
         'access callback' => 'user_access',
         'access arguments' => array('can create link groups'),
         'type' => MENU_CALLBACK
     );
 
-    $items['quicklinks/edit/link/%quicklinks_value'] = array(
+    $items['admin/structure/quicklinks/edit/link/%quicklinks_value'] = array(
         'title' => 'Edit quicklink',
         'page callback' => 'drupal_get_form',
-        'page arguments' => array('quicklinks_link_edit', 3),
+        'page arguments' => array('quicklinks_link_edit', 5),
         'access callback' => 'user_access',
         'access arguments' => array('can create links'),
         'type' => MENU_CALLBACK
@@ -68,61 +80,72 @@ function quicklinks_value_load($foo) { return $foo; }
 function quicklinks_list() {
     $form = array();
 
-    // let's put a nice "create new group" form at the top, if you have permission to do that
-    if (user_access('can create link groups')) {
+    drupal_add_css(drupal_get_path('module', 'quicklinks') . '/quicklinks.css');
+
+    if (user_access('can create links') || user_access('can create link groups')) {
+
         $form['new'] = array(
             '#type' => 'fieldset',
-            '#title' => 'Create new group'
-        );
-        $form['new']['new_title'] = array(
-            '#type' => 'textfield',
-            '#title' => 'Title'
-        );
-        $form['new']['new_submit'] = array(
-            '#type' => 'submit',
-            '#value' => 'Create'
-        );        
-    }
-
-    // and hey let's put a nice "create new link" form at the top, if you have permission to do that
-    if (user_access('can create links')) {
-        $form['new_link'] = array(
-            '#type' => 'fieldset',
-            '#title' => 'Create new link'
-        );
-        $form['new_link']['new_link_title'] = array(
-            '#type' => 'textfield',
-            '#title' => 'Title'
-        );
-        $form['new_link']['new_link_url'] = array(
-            '#type' => 'textfield',
-            '#title' => 'URL',
-            '#default_value' => 'http://'
-        );
-        $form['new_link']['new_link_order'] = array(
-            '#type' => 'textfield',
-            '#title' => 'Order',
-            '#default_value' => '0',
-            '#description' => 'Lower values appear first'
+            '#title' => 'Create New'
         );
 
-        $form['new_link']['new_link_gid'] = array(
-            '#type' => 'select',
-            '#title' => 'Group',
-            '#options' => quicklinks_get_groups()
-        );
-        $form['new_link']['new_link_submit'] = array(
-            '#type' => 'submit',
-            '#value' => 'Create'
-        );               
-    }
+        // let's put a nice "create new group" form at the top, if you have permission to do that
+        if (user_access('can create link groups')) {
+            $form['new']['new_title'] = array(
+                '#type' => 'textfield',
+                '#title' => 'Group Title'
+            );
+            $form['new']['new_submit'] = array(
+                '#type' => 'submit',
+                '#value' => 'Create Group'
+            );        
+        }
+
+        // and hey let's put a nice "create new link" form at the top, if you have permission to do that
+        if (user_access('can create links')) {
+            $form['new']['new_link_title'] = array(
+                '#type' => 'textfield',
+                '#title' => 'Link Title'
+            );
+            $form['new']['new_link_url'] = array(
+                '#type' => 'textfield',
+                '#title' => 'Link URL',
+                '#default_value' => 'http://'
+            );
+            $form['new']['new_link_window'] = array(
+                '#type' => 'select',
+                '#title' => 'Open in a new window?',
+                '#options' => array(0 => 'No', 1 => 'Yes'),
+                '#default_value' => 0
+            );
+            $form['new']['new_link_order'] = array(
+                '#type' => 'textfield',
+                '#title' => 'Link Order',
+                '#default_value' => '0',
+                '#description' => 'Lower values appear first'
+            );
+
+            $form['new']['new_link_gid'] = array(
+                '#type' => 'select',
+                '#title' => 'Link Group',
+                '#options' => quicklinks_get_groups()
+            );
+            $form['new']['new_link_submit'] = array(
+                '#type' => 'submit',
+                '#value' => 'Create Link'
+            );               
+        }
+
+    } // end if user_access
+
+
 
     // and now let's list everything out
     $groups = quicklinks_get_groups();
     foreach ($groups as $gid => $gtitle) {
 
         $edit_link_group = '';
-        if (user_access('can create link groups')) $edit_link_group = '(' . l('Edit', 'quicklinks/edit/group/' . $gid) . ')';
+        if (user_access('can create link groups')) $edit_link_group = '(' . l('Edit', 'admin/structure/quicklinks/edit/group/' . $gid) . ')';
 
         $form['group_' . $gid] = array(
             '#markup' => '<strong>' . $gtitle . '</strong> ' . $edit_link_group,
@@ -154,9 +177,10 @@ function quicklinks_list_submit($form, &$form_state) {
     $new_url = trim(strip_tags($form_state['values']['new_link_url']));
     if ($new_url != '' && $new_url != 'http://') {
         $new_title = trim(strip_tags($form_state['values']['new_link_title']));
+        $new_window = trim(strip_tags($form_state['values']['new_link_window']));
         $new_order = trim(strip_tags($form_state['values']['new_link_order']));
         $new_gid = trim(strip_tags($form_state['values']['new_link_gid']));
-        $lid = quicklinks_new_link($new_title, $new_url, $new_order, $new_gid);
+        $lid = quicklinks_new_link($new_title, $new_url, $new_order, $new_gid, $new_window);
         drupal_set_message('Created "' . $new_title . '"');
     }
 
@@ -187,15 +211,17 @@ function quicklinks_new_group($gtitle) {
  * @param string $url
  * @param int $order
  * @param int $gid
+ * @param int $window (1 if open in new window)
  *
  * @return int
  */
-function quicklinks_new_link($title, $url, $order, $gid) {
+function quicklinks_new_link($title, $url, $order, $gid, $window = 0) {
     $lid = db_insert('quicklinks_links')
         ->fields(array(
             'quicklinks_title' => $title,
             'quicklinks_url' => $url,
             'quicklinks_order' => $order,
+            'quicklinks_window' => $window,
             'quicklinks_gid' => $gid
         ))
         ->execute();
@@ -254,9 +280,11 @@ function quicklinks_render_links($gid, $include_edit = false, $classes = array()
         $links_html .= '<ul class="quicklinks_links ' . implode(" ", $classes) . '"">';
         foreach ($links as $link) {
             $links_html .= '<li class="quicklinks_link">';
-            $links_html .= l($link['quicklinks_title'], $link['quicklinks_url']);
+            $options = array();
+            if ($link['quicklinks_window']) $options['attributes'] = array('target' => '_blank');
+            $links_html .= l($link['quicklinks_title'], $link['quicklinks_url'], $options);
             if ($include_edit && user_access('can create links')) {
-                $links_html .= ' (' . l('Edit', 'quicklinks/edit/link/' . $link['quicklinks_id']) . ')';
+                $links_html .= ' (' . l('Edit', 'admin/structure/quicklinks/edit/link/' . $link['quicklinks_id']) . ')';
             }
             $links_html .= '</li>';
         }
@@ -298,6 +326,8 @@ function quicklinks_group_edit($ignore, $ignore2, $gid) {
         '#type' => 'submit',
         '#value' => 'Update'
     );
+
+    if (user_access('can delete link groups')) {
     $form['delete'] = array(
         '#type' => 'submit',
         '#value' => 'Delete',
@@ -305,6 +335,8 @@ function quicklinks_group_edit($ignore, $ignore2, $gid) {
             'onclick' => "return confirm('This will delete this group and all of its links. Are you sure?');"
         )
     );
+    }
+
     return $form;
 }
 
@@ -316,11 +348,11 @@ function quicklinks_group_edit_submit($form, &$form_state) {
     $gid = $form_state['values']['gid'];
     $gtitle = trim(strip_tags($form_state['values']['title']));
 
-    if ($form_state['values']['op'] == 'Delete') {
+    if ($form_state['values']['op'] == 'Delete' && user_access('can delete link groups')) {
 
         quicklinks_killall($gid);
         drupal_set_message('Deleted "' . $gtitle . '" and all of its links.');
-        drupal_goto('quicklinks');
+        drupal_goto('admin/structure/quicklinks/list');
 
     } else if ($form_state['values']['op'] == 'Update') {
 
@@ -332,10 +364,10 @@ function quicklinks_group_edit_submit($form, &$form_state) {
             ->execute();
 
         drupal_set_message('Updated "' . $gtitle . '".');
-        drupal_goto('quicklinks');       
+        drupal_goto('admin/structure/quicklinks/list');       
 
     } else if ($form_state['values']['op'] == 'Cancel') {
-        drupal_goto('quicklinks');
+        drupal_goto('admin/structure/quicklinks/list');
     }
 
 }
@@ -368,6 +400,12 @@ function quicklinks_link_edit($ignore, $ignore2, $id) {
         '#default_value' => $link['quicklinks_url'],
         '#required' => true
     );
+    $form['window'] = array(
+        '#type' => 'select',
+        '#title' => 'Open in a new window?',
+        '#options' => array(0 => 'No', 1 => 'Yes'),
+        '#default_value' => $link['quicklinks_window']
+    );
     $form['order'] = array(
         '#type' => 'textfield',
         '#title' => 'Order',
@@ -386,6 +424,8 @@ function quicklinks_link_edit($ignore, $ignore2, $id) {
         '#type' => 'submit',
         '#value' => 'Update'
     );
+
+    if (user_access('can delete links')) {
     $form['delete'] = array(
         '#type' => 'submit',
         '#value' => 'Delete',
@@ -393,6 +433,8 @@ function quicklinks_link_edit($ignore, $ignore2, $id) {
             'onclick' => "return confirm('Are you sure you want to delete this link?');"
         )
     );
+    }
+
     return $form;
 }
 
@@ -404,13 +446,14 @@ function quicklinks_link_edit_submit($form, &$form_state) {
     $id = $form_state['values']['id'];
     $title = trim(strip_tags($form_state['values']['title']));
     $url = trim(strip_tags($form_state['values']['url']));
-    $order = trim(strip_tags($form_state['values']['order']));    
+    $order = trim(strip_tags($form_state['values']['order']));
+    $window = trim(strip_tags($form_state['values']['window']));
 
-    if ($form_state['values']['op'] == 'Delete') {
+    if ($form_state['values']['op'] == 'Delete' && user_access('can delete links')) {
 
         db_delete('quicklinks_links')->condition('quicklinks_id', $id)->execute();
         drupal_set_message('Deleted "' . $title . '".');
-        drupal_goto('quicklinks');
+        drupal_goto('admin/structure/quicklinks/list');
 
     } else if ($form_state['values']['op'] == 'Update') {
 
@@ -418,16 +461,17 @@ function quicklinks_link_edit_submit($form, &$form_state) {
             ->fields(array(
                 'quicklinks_title' => $title,
                 'quicklinks_url' => $url,
-                'quicklinks_order' => $order
+                'quicklinks_order' => $order,
+                'quicklinks_window' => $window
             ))
             ->condition('quicklinks_id', $id)
             ->execute();
 
         drupal_set_message('Updated "' . $title . '".');
-        drupal_goto('quicklinks');       
+        drupal_goto('admin/structure/quicklinks/list');       
 
     } else if ($form_state['values']['op'] == 'Cancel') {
-        drupal_goto('quicklinks');
+        drupal_goto('admin/structure/quicklinks/list');
     }
 
 }
@@ -450,3 +494,45 @@ function quicklinks_killall($gid) {
         array(':gid' => $gid)
     );
 }
+
+
+/**
+ * Implements hook_block_info().
+ */
+function quicklinks_block_info() {
+
+    $blocks = array();
+
+    $groups = quicklinks_get_groups();
+    foreach ($groups as $gid => $gtitle) {
+        $blocks['quicklinks_' . $gid] = array(
+            'info' => t('Quicklinks: ' . $gtitle),
+            'cache' => DRUPAL_CACHE_PER_ROLE,
+        );
+    }
+    
+    return $blocks;
+}
+
+
+
+/**
+ * Implements hook_block_view().
+ *
+ * Prepares the contents of the block.
+ */
+function quicklinks_block_view($delta = '') {
+
+    $block = array('content' => '');
+
+    $groups = quicklinks_get_groups();
+
+    $delta_gid = end(explode("_", $delta));
+    if (array_key_exists($delta_gid, $groups)) {
+        $block['title'] = $groups[$delta_gid];
+        $block['content'] = quicklinks_render_links($delta_gid);
+    }
+
+    return $block;
+}
+
